@@ -1,61 +1,43 @@
 (var main-font nil)
 (var blinky-stars nil)
 (var intro-music nil)
-
 (var logo nil)
+(var active-level nil)
 
 (local util (require "util"))
+(local starfield (require "starfield"))
+(local level (require "level"))
 
-(defn generate-random-star [max-x max-y]
-  (let [star {}]
-    (set star.x (math.random 2 (- max-x 2)))
-    (set star.y (math.random 2 (- max-y 2)))
-    (set star.pulser (* 0.5 (math.random)))
-    (set star.intensity (math.random))
-    (set star.idir (if (< (math.random) 0.5) -1 1)) ;; which direction is the intensity going
-    (set star.maxsize (math.floor (* 6 (math.random))))
-    star))
-
-(defn animate-star-field [dt]
-  (each [k star (ipairs blinky-stars)]
-    (let [newi (+ star.intensity (* dt star.pulser star.idir))
-          ;; adjust the new intensity dir if it needs to be
-          newid (if (< newi 0) 1 (if (> newi 1) -1 star.idir))
-          newi (if (< newi 0) 0 (if (> newi 1) 1 newi))
-          news (* star.maxsize newi)]
-      ;;(print newid newi news)
-      (set star.idir newid)
-      (set star.intensity newi)
-      (set star.size news))))
-
-(defn render-star-field [stars]
-  (each [k star (ipairs stars)]
-    (let [hs (/ star.size 2)]
-      (love.graphics.setColor 255 255 255 (* 255 star.intensity))
-      (love.graphics.rectangle "fill" (- star.x hs) (- star.y hs)
-                               star.size star.size))))
-
-(fn create-star-field [max-x max-y]
-  (let [stars {}]
-    (for [i 1 200]
-      (tset stars i (generate-random-star max-x max-y)))
-    stars))
+(local levels
+       [{:ship {:vx -1 :vy 0}
+         :planets [{:size 2
+                    :distance 300
+                    :resources [0]
+                    :tile 1}]
+         :vortex {:x 400 :y 100 :radius 40}}])
 
 (fn love.load []
-  (set blinky-stars (create-star-field 800 600))
+  (love.graphics.setDefaultFilter "nearest" "nearest")
+  (set blinky-stars (starfield.create))
+
+  (math.randomseed (os.time))
+
+  ;; pre-load resources for level set
+  (level.load)
+
+  (set active-level (level.create (. levels 1)))
+
+  ;; intro stuff
   (set logo (love.graphics.newImage "assets/logo.png"))
   (set intro-music (love.audio.newSource "assets/intro.mp3"))
-
   (set main-font (love.graphics.newImageFont
                   "assets/font.png"
                   (.. " abcdefghijklmnopqrstuvwxyz"
                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ0"
-                      "123456789.,!?-+/():;%&`'*#=[]\"")))
-  
-  )
+                      "123456789.,!?-+/():;%&`'*#=[]\""))))
 
 (fn love.conf [t]
-  (set t.window.title "Gravity - You think you know how to fall?"))
+  (set t.window.title "Gravity : Fall"))
 
 (defn center-text [s r]
   (let [w (/ (love.graphics.getWidth) 2)
@@ -64,7 +46,7 @@
     (love.graphics.print s x r)))
 
 (defn main-screen []
-  (render-star-field blinky-stars)
+  (starfield.draw blinky-stars)
   (love.graphics.draw logo
                       (/ (- (love.graphics.getWidth)
                             (: logo :getWidth))
@@ -109,12 +91,12 @@
     (center-text "An OK space adventure" (math.floor (+ text-render-offset 680)))))
 
 (defn second-screen []
-  (render-star-field blinky-stars)
+  (starfield.draw blinky-stars)
   (render-text))
 
 (var playing-intro-music? false)
-(fn love.update [t]
-  (animate-star-field t)
+(fn second-screen-update [t]
+  (starfield.update blinky-stars t)
   (when (not playing-intro-music?)
     (: intro-music :play)
     (set playing-intro-music? true))
@@ -127,6 +109,24 @@
       (set text-render-offset (- text-render-offset (* 20 t)))
       nil))
 
+(defn game-screen-update [t]
+  (starfield.update blinky-stars t)
+  (level.update active-level t))
+
+(fn game-screen []
+  (starfield.draw blinky-stars)
+  (love.graphics.setColor 255 255 255 255)
+  (level.draw active-level))
+
+
+(fn love.update [t]
+  (game-screen-update t))
+
 (fn love.draw []
   (love.graphics.setFont main-font)
-  (second-screen))
+  (game-screen))
+
+(fn love.keypressed [key unicode]
+  (when active-level
+    (level.keypressed active-level
+                      key unicode)))
