@@ -5,6 +5,10 @@ local vortex = require("vortex")
 local lume = require("lume")
 local util = require("util")
 local tracking_info = nil
+local bg_music = nil
+local victory_music = nil
+local level_switcher = nil
+local level_replay = nil
 local function _0_(planets)
   local x = love.mouse.getX()
   local y = love.mouse.getY()
@@ -79,21 +83,50 @@ local function _7_(level, key, unicode)
     return nil
   elseif ((key) == ("space") and (level.state) == ("awaiting-launch")) then
     return launch_level(level)
-  elseif (key) == ("space") then
+  elseif ((key) == ("space") and (level.state) == ("in-flight")) then
     return reset_level(level)
+  elseif ((key) == ("space") and (level.state) == ("in-flight")) then
+    return reset_level(level)
+  elseif ((key) == ("space") and (level.state) == ("crashed")) then
+    return reset_level(level)
+  elseif ((key) == ("space") and (level.state) == ("complete")) then
+    return level_switcher()
+  elseif ((key) == ("r") and (level.state) == ("complete")) then
+    return level_replay()
   end
 end
-local function _8_()
+local function _8_(switcher, replay)
   planet.load()
-  return ship.load()
+  ship.load()
+  hud.load()
+  level_switcher = switcher
+  level_replay = replay
+  bg_music = love.audio.newSource("assets/alone.mp3")
+  bg_music:setLooping(true)
+  victory_music = love.audio.newSource("assets/victory.mp3")
+  return victory_music:setVolume(0.29999999999999999)
 end
 local function _9_(level)
   return reset_level(level)
 end
 local function _10_(level, tt)
+  local function _11_()
+    if (not bg_music:isPlaying() and (level.state) == ("awaiting-launch")) then
+      victory_music:stop()
+      return bg_music:play()
+    end
+  end
+  _11_()
+  local function _12_()
+    if (bg_music:isPlaying() and (level.state) == ("complete")) then
+      victory_music:play()
+      return bg_music:stop()
+    end
+  end
+  _12_()
   do
     local t = (tt * level["speed-up"])
-    local function _11_()
+    local function _13_()
       if (level.state) == ("in-flight") then
         level["survival-score-offered"] = math.min(10000, (level["survival-score-offered"] + math.floor((tt * 1000))))
         level.duration = (level.duration + tt)
@@ -101,10 +134,10 @@ local function _10_(level, tt)
         return ship["update-forces"](level.ship, t)
       end
     end
-    _11_()
-    local function _12_()
+    _13_()
+    local function _14_()
       if (level.state) == ("awaiting-launch") then
-        local function _12_()
+        local function _14_()
           if love.mouse.isDown(1) then
             if not tracking_info then
               local p = find_mouse_intersect_planet(level.planets)
@@ -125,7 +158,7 @@ local function _10_(level, tt)
             end
           end
         end
-        _12_()
+        _14_()
         if tracking_info then
           local mx = love.mouse.getX()
           local my = love.mouse.getY()
@@ -138,7 +171,7 @@ local function _10_(level, tt)
         end
       end
     end
-    _12_()
+    _14_()
     for k, p in ipairs(level.planets) do
       planet.update(p, t)
     end
@@ -148,27 +181,27 @@ local function _10_(level, tt)
   do
     local vortex_bounds = vortex["center-and-radius"](level.vortex)
     local ship_bounds = ship["center-and-radius"](level.ship)
-    local function _11_()
+    local function _13_()
       if (util["sphere-collision"](vortex_bounds, ship_bounds) and (level.state) == ("in-flight")) then
         return finish_level(level)
       end
     end
-    _11_()
+    _13_()
   end
   do
     local ship_center_and_radius = ship["center-and-radius"](level.ship)
-    local function _11_(p)
+    local function _13_(p)
       return planet.collide(p, ship_center_and_radius)
     end
-    local coll_status = lume.map(level.planets, _11_)
-    local function _12_(s)
+    local coll_status = lume.map(level.planets, _13_)
+    local function _14_(s)
       return (s) == ("full-collide")
     end
-    local full_collide_3f = lume.first(lume.filter(coll_status, _12_))
-    local function _13_(s)
+    local full_collide_3f = lume.first(lume.filter(coll_status, _14_))
+    local function _15_(s)
       return (s) == ("resource-collide")
     end
-    local resource_collides = #lume.filter(coll_status, _13_)
+    local resource_collides = #lume.filter(coll_status, _15_)
     level["resource-score"] = (level["resource-score"] + (50000 * resource_collides))
     if ((level.state) == ("in-flight") and full_collide_3f) then
       return trigger_game_over(level)

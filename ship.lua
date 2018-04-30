@@ -78,7 +78,7 @@ local function _7_(ship)
       local x = (((1 - f) * ship.x) + (f * ship["fall-target"][1]))
       local y = (((1 - f) * ship.y) + (f * ship["fall-target"][2]))
       love.graphics.setColor(255, 255, 255, 255)
-      return love.graphics.draw(ship_texture, ship_quads[ship.current], x, y, (f * 15), (1 - f), (1 - f), 16, 16)
+      return love.graphics.draw(ship_texture, ship_quads[ship.current], x, y, (f * 5), (1 - f), (1 - f), 16, 16)
     end
   elseif (ship.state) == ("exploding") then
     love.graphics.setColor(255, 255, 255, 255)

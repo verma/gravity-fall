@@ -152,7 +152,7 @@
                 (love.graphics.setColor 255 255 255 255)
                 (love.graphics.draw ship-texture
                                     (. ship-quads ship.current)
-                                    x y (* f 15)
+                                    x y (* f 5)
                                     (- 1 f)
                                     (- 1 f)
                                     16 16))))

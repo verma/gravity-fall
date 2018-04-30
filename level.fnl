@@ -7,6 +7,11 @@
 (local util (require "util"))
 
 (var tracking-info nil)
+(var bg-music nil)
+(var victory-music nil)
+
+(var level-switcher nil)
+(var level-replay nil)
 
 (defn find-mouse-intersect-planet [planets]
   (let [x (love.mouse.getX)
@@ -44,9 +49,19 @@
                           level.level-info.vortex.y])
   (set level.state :complete))
 
-{:load (fn []
+{:load (fn [switcher replay]
          (planet.load)
-         (ship.load))
+         (ship.load)
+         (hud.load)
+
+         (set level-switcher switcher)
+         (set level-replay replay)
+
+         (set bg-music (love.audio.newSource "assets/alone.mp3"))
+         (: bg-music :setLooping true)
+
+         (set victory-music (love.audio.newSource "assets/victory.mp3"))
+         (: victory-music :setVolume 0.3))
 
  :create (fn [level-info]
            (let [planets []]
@@ -79,11 +94,40 @@
                      (= level.state :awaiting-launch))
                 (launch-level level)
 
-                (= key "space")
-                (reset-level level)))
+                (and (= key "space")
+                     (= level.state :in-flight))
+                (reset-level level)
+
+                (and (= key "space")
+                     (= level.state :in-flight))
+                (reset-level level)
+
+                (and (= key "space")
+                     (= level.state :crashed))
+                (reset-level level)
+
+                (and (= key "space")
+                     (= level.state :complete))
+                (level-switcher)
+
+                (and (= key "r")
+                     (= level.state :complete))
+                (level-replay)))
+ 
  :update (fn [level tt]
+           ;; play music if we are not paying
+           (when (and (not (: bg-music :isPlaying))
+                      (= level.state :awaiting-launch))
+             (: victory-music :stop)
+             (: bg-music :play))
+
+           ;; stop music when complete
+           (when (and (: bg-music :isPlaying)
+                      (= level.state :complete))
+             (: victory-music :play)
+             (: bg-music :stop))
+
            (let [t (* tt level.speed-up)]
-             
              ;; when we're inflight update the duration
              (when (= level.state :in-flight)
                ;; survival score
